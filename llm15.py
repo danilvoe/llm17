@@ -6,6 +6,7 @@
 # Вывести результат
 
 import ollama #qwen3-coder:30b
+from ollama._types import ChatResponse
 import json
 import re
 import os
@@ -33,7 +34,7 @@ class BasicActionLLM:
     def clear_context(self):
         self.conversation_history = []
 
-    def get_llm_response(self, prompt: str, role='user'):
+    def get_llm_response(self, prompt: str, role='user')->ChatResponse:
         final_response = False
         self.add_to_contexts(role, prompt)
         try:
