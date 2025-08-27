@@ -35,10 +35,10 @@ class BasicActionLLM:
 
     def get_llm_response(self, prompt: str, role='user'):
         final_response = False
-        self.add_to_context(role, prompt)
+        self.add_to_contexts(role, prompt)
         try:
             client = ollama.Client(host=os.getenv('HOST_PORT_OLLAMA'))
-            response = client.chat(
+            responses = client.chat(
                 model=os.getenv('OLLAMA_MODEL'),
                 messages=self.conversation_history,
                 stream=False,                
@@ -51,7 +51,7 @@ class BasicActionLLM:
     def clean_response(self, llm_response: str):
         return re.sub(r"<think>.*?</think>", "", llm_response, flags=re.DOTALL).strip()
 
-class CodeWriteCodeCheck():
+class CodeWriteCodeCheckf():
     def __init__(self):
         self.ai = BasicActionLLM()
     
