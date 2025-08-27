@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 def analyze_and_fix_file_with_llm(file_path: str) -> List[Tuple[int, str]]:
     """
-    Анализирует файл на ошибки с сохранением номеров строк.
+    Анализирует файл на ошибки с сохранением отступов и номеров строк.
     
     Args:
         file_path (str): Путь к файлу
@@ -18,9 +18,10 @@ def analyze_and_fix_file_with_llm(file_path: str) -> List[Tuple[int, str]]:
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         
-        # Формируем код с номерами строк для LLM
+        # Формируем код с номерами строк и сохраняем отступы
         code_with_line_numbers = ""
         for i, line in enumerate(lines, 1):
+            # Сохраняем оригинальные отступы (пробелы или табуляцию)
             code_with_line_numbers += f"{i}: {line}"
         
         client = openai.OpenAI(
@@ -33,7 +34,7 @@ def analyze_and_fix_file_with_llm(file_path: str) -> List[Tuple[int, str]]:
             messages=[
                 {
                     "role": "system",
-                    "content": "Ты эксперт по Python. Проанализируй следующий код на наличие синтаксических и логических ошибок. Код содержит номера строк в начале каждой строки (например, '1: print(\"hello\")'). Возвращай только список ошибок в формате: номер_строки: описание_ошибки"
+                    "content": "Ты эксперт по Python. Проанализируй следующий код на наличие синтаксических и логических ошибок. Код содержит номера строк в начале каждой строки (например, '1: print(\"hello\")'). Возвращай только список ошибок в формате: номер_строки: описание_ошибки. Важно: сохраняй оригинальные отступы при анализе и исправлении."
                 },
                 {
                     "role": "user",
@@ -44,9 +45,7 @@ def analyze_and_fix_file_with_llm(file_path: str) -> List[Tuple[int, str]]:
         )
         
         llm_response = response.choices[0].message.content
-        print('analyze_and_fix_file_with_llm')
-        print(llm_response)
-        print('___________')
+        
         errors = []
         for line in llm_response.split('\n'):
             if ':' in line and not line.strip().startswith('#') and line.strip():
@@ -65,7 +64,7 @@ def analyze_and_fix_file_with_llm(file_path: str) -> List[Tuple[int, str]]:
 
 def get_fix_suggestions(file_path: str, errors: List[Tuple[int, str]]) -> List[Tuple[int, str]]:
     """
-    Получает предложения по исправлению ошибок от LLM.
+    Получает предложения по исправлению ошибок от LLM с сохранением отступов.
     
     Args:
         file_path (str): Путь к файлу
@@ -78,7 +77,7 @@ def get_fix_suggestions(file_path: str, errors: List[Tuple[int, str]]) -> List[T
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         
-        # Формируем код с номерами строк для LLM
+        # Формируем код с номерами строк и сохраняем отступы
         code_with_line_numbers = ""
         for i, line in enumerate(lines, 1):
             code_with_line_numbers += f"{i}: {line}"
@@ -95,7 +94,7 @@ def get_fix_suggestions(file_path: str, errors: List[Tuple[int, str]]) -> List[T
             messages=[
                 {
                     "role": "system",
-                    "content": "Ты эксперт по Python. Проанализируй код и предложи точные исправления для каждой ошибки. Код содержит номера строк в начале каждой строки (например, '1: print(\"hello\")'). Возвращай только исправленный код в формате: номер_строки: исправленная_строка"
+                    "content": "Ты эксперт по Python. Проанализируй код и предложи точные исправления для каждой ошибки. Код содержит номера строк в начале каждой строки (например, '1: print(\"hello\")'). Важно: при формировании исправленного кода сохраняй оригинальные отступы и структуру кода. Возвращай только исправленный код в формате: номер_строки: исправленная_строка"
                 },
                 {
                     "role": "user",
@@ -106,9 +105,7 @@ def get_fix_suggestions(file_path: str, errors: List[Tuple[int, str]]) -> List[T
         )
         
         llm_response = response.choices[0].message.content
-        print('get_fix_suggestions')
-        print(llm_response)
-        print('___________')
+        
         fixes = []
         for line in llm_response.split('\n'):
             if ':' in line and not line.strip().startswith('#') and line.strip():
@@ -127,7 +124,7 @@ def get_fix_suggestions(file_path: str, errors: List[Tuple[int, str]]) -> List[T
 
 def fix_file_errors(file_path: str, errors: List[Tuple[int, str]]) -> bool:
     """
-    Применяет исправления к файлу на основе найденных ошибок.
+    Применяет исправления к файлу с сохранением отступов.
     
     Args:
         file_path (str): Путь к файлу
@@ -151,8 +148,17 @@ def fix_file_errors(file_path: str, errors: List[Tuple[int, str]]) -> bool:
         modified = False
         for line_num, fixed_code in fixes:
             if 1 <= line_num <= len(lines):
-                # Убираем символ новой строки из исходной строки перед заменой
-                lines[line_num - 1] = fixed_code + '\n'
+                # Сохраняем оригинальные отступы из исходной строки
+                original_line = lines[line_num - 1]
+                
+                # Определяем количество ведущих пробелов (или табуляций)
+                leading_spaces = len(original_line) - len(original_line.lstrip())
+                
+                # Создаем новую строку с сохранением отступов
+                new_line = ' ' * leading_spaces + fixed_code + '\n'
+                
+                # Заменяем строку в массиве
+                lines[line_num - 1] = new_line
                 modified = True
         
         if modified:
